@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	pathToStaticDir = "06_databases/99_hw/db/redditclone/static"
-	pathToIndex     = "06_databases/99_hw/db/redditclone/static/html/index.html"
+	pathToStaticDir = "static"
+	pathToIndex     = "static/html/index.html"
 )
 
 func main() {

@@ -2,19 +2,29 @@ package user
 
 import (
 	"fmt"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/posts"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/posts"
 	"golang.org/x/crypto/bcrypt"
 	"sync"
 )
 
 type UserMemoryRepository struct {
-	data   map[string]*User
-	lastID uint32
-	mu     sync.RWMutex
+	DB   *gorm.DB
+	data map[string]*User
+	mu   sync.RWMutex
 }
 
 func NewUserMemoryRepo() *UserMemoryRepository {
+	dsn := "root:@tcp(localhost:3306)/reddit_clone"
+	db, err := gorm.Open("mysql", dsn)
+	if err != nil {
+		panic(err)
+	}
+	db.DB()
+	db.DB().Ping()
 	return &UserMemoryRepository{
+		DB:   db,
 		data: map[string]*User{},
 		mu:   sync.RWMutex{},
 	}
@@ -23,16 +33,16 @@ func NewUserMemoryRepo() *UserMemoryRepository {
 func (repo *UserMemoryRepository) Authorize(login, pass string) (User, error) {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
-	u, ok := repo.data[login]
-	if !ok {
-		return User{}, fmt.Errorf("пользователь с таким именем не существует")
+	var user User
+	if result := repo.DB.Where("login = ?", login).First(&user); result.Error != nil {
+		return User{}, result.Error
 	}
 
-	if !CheckPasswordHash(pass, u.password) {
+	if !CheckPasswordHash(pass, user.Password) {
 		return User{}, fmt.Errorf("неверный логин или пароль")
 	}
 
-	return *u, nil
+	return user, nil
 }
 
 func (repo *UserMemoryRepository) SignUp(login, pass string) (User, error) {
@@ -40,19 +50,15 @@ func (repo *UserMemoryRepository) SignUp(login, pass string) (User, error) {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
-	if _, ok := repo.data[login]; ok {
-		return User{}, fmt.Errorf("пользователь с таким именем уже существует %s", login)
-	}
-
 	hashedPassword, err := HashPassword(pass)
 	if err != nil {
 		return User{}, err
 	}
-
-	repo.lastID++
-	repo.data[login] = &User{ID: fmt.Sprintf("u%d", repo.lastID), password: hashedPassword, Login: login, userPosts: make(map[string]bool), votes: make(map[string]*posts.Vote)}
-	ans := *repo.data[login]
-	return ans, nil
+	user := User{Login: login, Password: hashedPassword}
+	if result := repo.DB.Create(&user); result.Error != nil {
+		return User{}, result.Error
+	}
+	return user, nil
 }
 
 func (repo *UserMemoryRepository) AddPost(login, postID string) error {
@@ -75,6 +81,7 @@ func (repo *UserMemoryRepository) DeletePost(login, postID string) error {
 	repo.data[login].userPosts[postID] = false
 	return nil
 }
+
 func (repo *UserMemoryRepository) AddVote(login, postID string, vote *posts.Vote) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
@@ -84,6 +91,7 @@ func (repo *UserMemoryRepository) AddVote(login, postID string, vote *posts.Vote
 	repo.data[login].votes[postID] = vote
 	return nil
 }
+
 func (repo *UserMemoryRepository) SetVote(login, postID string, voteValue int) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
@@ -103,6 +111,7 @@ func (repo *UserMemoryRepository) DeleteVote(login, postID string) error {
 	delete(repo.data[login].votes, postID)
 	return nil
 }
+
 func (repo *UserMemoryRepository) GetUserPosts(login string) []string {
 	repo.mu.RLock()
 	postsSeq := repo.data[login].userPosts

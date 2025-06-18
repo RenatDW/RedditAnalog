@@ -2,55 +2,60 @@ package session
 
 import (
 	"errors"
+	"github.com/jinzhu/gorm"
 	"net/http"
 	"sync"
 	"time"
 )
 
 type SessionsManager struct {
-	data map[string]*Session
-	mu   *sync.RWMutex
+	DB *gorm.DB
+	mu *sync.RWMutex
 }
 
 func NewSessionsManager() *SessionsManager {
+	dsn := "root:@tcp(localhost:3306)/reddit_clone?parseTime=true"
+	db, err := gorm.Open("mysql", dsn)
+	if err != nil {
+		panic(err)
+	}
+	db.DB()
+	db.DB().Ping()
 	return &SessionsManager{
-		data: make(map[string]*Session, 10),
-		mu:   &sync.RWMutex{},
+		DB: db,
+		//data: make(map[string]*Session, 10),
+		mu: &sync.RWMutex{},
 	}
 }
 
 func (sm *SessionsManager) Check(r *http.Request) (*Session, error) {
-	sessionCookie, err := r.Cookie("session_id")
+	sessionCookie, err := r.Cookie("token")
 	if errors.Is(err, http.ErrNoCookie) {
 		return nil, ErrNoAuth
 	}
-
+	var sess Session
 	sm.mu.RLock()
-	sess, ok := sm.data[sessionCookie.Value]
+	if result := sm.DB.Where("token = ?", sessionCookie.Value).First(&sess); result.Error != nil {
+		return nil, result.Error
+	}
 	sm.mu.RUnlock()
 
-	if !ok {
-		return nil, ErrNoAuth
-	}
-
-	return sess, nil
+	return &sess, nil
 }
 
-func (sm *SessionsManager) Create(w http.ResponseWriter, userID string, userLogin string) (*Session, error) {
+func (sm *SessionsManager) Create(w http.ResponseWriter, token string, userID string, userLogin string) (*Session, error) {
 	sess := NewSession(userID, userLogin)
-
+	sess.Token = token
 	sm.mu.Lock()
-	_, ok := sm.data[sess.ID]
-	for ok {
-		sess = NewSession(userID, userLogin)
-		_, ok = sm.data[sess.ID]
+	if result := sm.DB.Create(sess); result.Error != nil {
+		return &Session{}, result.Error
 	}
-	sm.data[sess.ID] = sess
+
 	sm.mu.Unlock()
 
 	cookie := &http.Cookie{
-		Name:    "session_id",
-		Value:   sess.ID,
+		Name:    "token",
+		Value:   token,
 		Expires: time.Now().Add(90 * 24 * time.Hour),
 		Path:    "/",
 	}
@@ -63,9 +68,8 @@ func (sm *SessionsManager) DestroyCurrent(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return err
 	}
-
 	sm.mu.Lock()
-	delete(sm.data, sess.ID)
+	sm.DB.Delete(&sess)
 	sm.mu.Unlock()
 
 	cookie := http.Cookie{

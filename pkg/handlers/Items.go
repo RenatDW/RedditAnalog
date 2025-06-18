@@ -3,9 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/posts"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/session"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/user"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/posts"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/session"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/user"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
@@ -141,7 +141,7 @@ func (i *ItemsHandler) AddPosts(w http.ResponseWriter, req *http.Request) {
 	}
 	i.AddPost(&newPost, ss)
 
-	err = json.NewEncoder(w).Encode(newPost)
+	err = json.NewEncoder(w).Encode(&newPost)
 	if err != nil {
 		i.Logger.Error(err)
 		return
@@ -165,6 +165,9 @@ func (i *ItemsHandler) PostDelete(w http.ResponseWriter, req *http.Request) {
 	if post.Author.ID == ss.UserID {
 		i.DeletePost(post.ID, ss)
 		i.Logger.Infof("Пост %s удален", postID)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "success",
+		})
 	} else {
 		i.Logger.Infof("Пользователь не имеет права удалить пост %s", postID)
 	}
@@ -216,9 +219,9 @@ func (i *ItemsHandler) CommentAdd(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	aut := posts.Author{Username: ss.Login, ID: ss.UserID}
-	i.ItemsRepo.AddComment(postID, posts.Comment{Author: aut, Body: comment.Comment, Created: time.Now()})
+	post = i.ItemsRepo.AddComment(postID, posts.Comment{Author: aut, Body: comment.Comment, Created: time.Now()})
 	postToFront := posts.ConstructPostToFront(post)
-	err = json.NewEncoder(w).Encode([]posts.PostToFront{*postToFront})
+	err = json.NewEncoder(w).Encode(*postToFront)
 	if err != nil {
 		i.Logger.Error(err)
 		return
@@ -236,7 +239,7 @@ func (i *ItemsHandler) CommentDelete(w http.ResponseWriter, req *http.Request) {
 		i.Logger.Infof("Пост  не найден %s", postID)
 		return
 	}
-	i.ItemsRepo.DeleteComment(post.ID, commentID)
+	post = i.ItemsRepo.DeleteComment(post.ID, commentID)
 	i.Logger.Infof("Комментарий %s удален", commentID)
 	err := json.NewEncoder(w).Encode(posts.ConstructPostToFront(post))
 	if err != nil {

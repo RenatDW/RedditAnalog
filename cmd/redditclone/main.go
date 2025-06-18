@@ -2,19 +2,19 @@ package main
 
 import (
 	"github.com/gorilla/mux"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/handlers"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/middleware"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/posts"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/session"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/user"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/handlers"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/middleware"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/posts"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/session"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/user"
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"
 )
 
 const (
-	pathToStaticDir = "05_web_app/99_hw/redditclone/static"
-	pathToIndex     = "05_web_app/99_hw/redditclone/static/html/index.html"
+	pathToStaticDir = "06_databases/99_hw/db/redditclone/static"
+	pathToIndex     = "06_databases/99_hw/db/redditclone/static/html/index.html"
 )
 
 func main() {

@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/middleware"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/session"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/user"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/middleware"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/session"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/user"
 	"go.uber.org/zap"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type UserHandler struct {
@@ -37,13 +38,14 @@ func (u *UserHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
-	_, err = u.Sessions.Create(w, us.ID, us.Login)
-	if err != nil {
-		log.Println(err)
-	}
-	resp, err := middleware.GenerateJWTToken(w, us)
+
+	resp, token, err := middleware.GenerateJWTToken(w, us)
 	if err != nil {
 		return
+	}
+	_, err = u.Sessions.Create(w, token, strconv.Itoa(us.ID), us.Login)
+	if err != nil {
+		log.Println(err)
 	}
 	u.Logger.Infof("Пользователь авторизовался %v", us)
 	_, err = w.Write(resp)
@@ -65,7 +67,7 @@ func (u *UserHandler) RegisterPage(w http.ResponseWriter, r *http.Request) {
 		middleware.JSONError(w, http.StatusUnauthorized, err.Error())
 	}
 
-	resp, err := middleware.GenerateJWTToken(w, us)
+	resp, token, err := middleware.GenerateJWTToken(w, us)
 	if err != nil {
 		log.Println(err)
 		return
@@ -75,7 +77,7 @@ func (u *UserHandler) RegisterPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
-	_, err = u.Sessions.Create(w, us.ID, us.Login)
+	_, err = u.Sessions.Create(w, token, strconv.Itoa(us.ID), us.Login)
 	if err != nil {
 		log.Println(err)
 	}

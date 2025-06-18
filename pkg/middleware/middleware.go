@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/session"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/session"
 	"go.uber.org/zap"
 	"log"
 	"net/http"

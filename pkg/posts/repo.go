@@ -1,7 +1,14 @@
 package posts
 
 import (
-	"strconv"
+	"context"
+	"go.mongodb.org/mongo-driver/bson"
+	_ "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	_ "go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
 	"sync"
 	"time"
 )
@@ -9,97 +16,189 @@ import (
 type ItemsRepo interface {
 	GetAll() []*Post
 	AddPost(post *PostToFront)
-	AddComment(postID string, comment Comment)
-	DeleteComment(postID string, commentID string)
+	AddComment(postID string, comment Comment) *Post
+	DeleteComment(postID string, commentID string) *Post
 	DeletePost(id string)
+	AddVote(postID string, userID string, vote Vote) *Post
+	DeleteVote(postID string, userID string) *Post
 	FindPost(postID string) (*Post, bool)
 }
 
 type ItemMemoryRepository struct {
 	lastID uint32
-	Data   map[string]*Post // [PostId]*PostToFront
-	mu     sync.RWMutex
+	//Data   map[string]*Post // [PostId]*PostToFront
+	DB  *mongo.Collection
+	Ctx context.Context
+	mu  sync.RWMutex
 }
 
 type Post struct {
-	Author           `json:"author"`
-	Category         string             `json:"category"`
-	Comments         map[string]Comment `json:"comments"`
-	Created          time.Time          `json:"created"`
-	ID               string             `json:"id"`
-	Score            int                `json:"score"`
-	UpVote           int
-	Title            string           `json:"title"`
-	Type             string           `json:"type"`
-	Text             string           `json:"text"`
-	URL              string           `json:"url"`
-	UpvotePercentage int              `json:"upvotePercentage"`
-	Views            int              `json:"views"`
-	Votes            map[string]*Vote `json:"votes"`
+	Author           Author             `bson:"author" json:"author"`
+	Category         string             `bson:"category" json:"category"`
+	Comments         map[string]Comment `bson:"comments" json:"comments"`
+	Created          time.Time          `bson:"created" json:"created"`
+	ID               string             `bson:"_id" json:"id"`
+	Score            int                `bson:"score" json:"score"`
+	ScoreCount       int                `bson:"scoreCount" json:"upVote"`
+	UpvoteCount      int                `bson:"upVoteCount" json:"upVoteCount"`
+	Title            string             `bson:"title" json:"title"`
+	Type             string             `bson:"type" json:"type"`
+	Text             string             `bson:"text" json:"text"`
+	URL              string             `bson:"url" json:"url"`
+	UpvotePercentage int                `bson:"upvotePercentage" json:"upvotePercentage"`
+	Views            int                `bson:"views" json:"views"`
+	Votes            map[string]*Vote   `bson:"votes" json:"votes"`
 }
 
 func NewMemoryRepo() *ItemMemoryRepository {
+	ctx := context.Background()
+	sess, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost"))
+	if err != nil {
+		panic(err)
+	}
+
+	collection := sess.Database("reddit_clone").Collection("posts")
+
 	return &ItemMemoryRepository{
 		lastID: 0,
-		Data:   make(map[string]*Post),
-		mu:     sync.RWMutex{},
+		DB:     collection,
+		Ctx:    ctx,
+		//Data:   make(map[string]*Post),
+		mu: sync.RWMutex{},
 	}
 }
 
 func (i *ItemMemoryRepository) GetAll() []*Post {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
-	k := 0
-	posts := make([]*Post, len(i.Data))
-	for _, post := range i.Data {
-		posts[k] = post
-		k++
+
+	var posts []*Post
+
+	c, err := i.DB.Find(i.Ctx, bson.M{})
+	if err != nil {
+		panic(err)
+	}
+	err = c.All(i.Ctx, &posts)
+	if err != nil {
+		panic(err)
 	}
 	return posts
 }
 
-func (i *ItemMemoryRepository) AddComment(postID string, comment Comment) {
-	i.mu.Lock()
-	i.lastID++
+func (i *ItemMemoryRepository) AddComment(postID string, comment Comment) *Post {
 
-	defer i.mu.Unlock()
-	sourcePost, ok := i.Data[postID]
+	post, ok := i.FindPost(postID)
 	if !ok {
-		return
+		return nil
 	}
-	comment.ID = "l" + strconv.Itoa(int(i.lastID))
-	sourcePost.Comments[comment.ID] = comment
+	i.mu.Lock()
+	commentID := primitive.NewObjectID().Hex()
+	comment.ID = commentID
+	post.Comments[commentID] = comment
+	i.DB.UpdateOne(i.Ctx, bson.M{"_id": postID}, bson.M{"$set": post})
+	i.mu.Unlock()
+	return post
 }
 
-func (i *ItemMemoryRepository) DeleteComment(postID string, commentID string) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	sourcePost, ok := i.Data[postID]
+func (i *ItemMemoryRepository) DeleteComment(postID string, commentID string) *Post {
+	post, ok := i.FindPost(postID)
 	if !ok {
-		return
+		return nil
 	}
-	delete(sourcePost.Comments, commentID)
+	i.mu.Lock()
+	delete(post.Comments, commentID)
+	i.DB.UpdateOne(i.Ctx, bson.M{"_id": postID}, bson.M{"$set": post})
+	i.mu.Unlock()
+	return post
 }
 
 func (i *ItemMemoryRepository) AddPost(post *PostToFront) {
+	//todo Точно ли нужно сохранять контекст в структуре или можно всегда использовать context.Background()
+	ans := createPost(post)
 	i.mu.Lock()
-	i.lastID++
-	post.ID = strconv.Itoa(int(i.lastID))
-	i.Data[post.ID] = createPost(post)
+	postID := primitive.NewObjectID().Hex()
+	ans.ID = postID
+	post.ID = postID
+	i.DB.InsertOne(i.Ctx, &ans)
 	i.mu.Unlock()
 }
 
 func (i *ItemMemoryRepository) DeletePost(id string) {
 	i.mu.Lock()
-	delete(i.Data, id)
+	i.DB.DeleteOne(i.Ctx, bson.M{"_id": id})
 	i.mu.Unlock()
+}
+
+func (i *ItemMemoryRepository) AddVote(postID string, userID string, vote Vote) *Post {
+	post, ok := i.FindPost(postID)
+	if !ok {
+		return &Post{}
+	}
+	i.mu.Lock()
+	oldVote := post.Votes[userID]
+	processVoteValue(oldVote, post, vote)
+	post.UpvotePercentage = recalculateUpVotePercentage(post)
+	post.Votes[userID] = &vote
+	i.DB.UpdateOne(i.Ctx, bson.M{"_id": postID}, bson.M{"$set": post})
+	i.mu.Unlock()
+	return post
+
+}
+
+func processVoteValue(oldVote *Vote, post *Post, vote Vote) {
+	if vote.Vote == 0 || (oldVote != nil && oldVote.Vote == vote.Vote) {
+		return
+	}
+	if oldVote == nil || oldVote.Vote == 0 {
+		post.Score += vote.Vote
+		post.ScoreCount++
+		if vote.Vote == 1 {
+			post.UpvoteCount++
+		}
+		return
+	}
+	post.Score += 2 * vote.Vote
+	post.UpvoteCount += vote.Vote
+
+}
+
+func (i *ItemMemoryRepository) DeleteVote(postID string, userID string) *Post {
+	post, ok := i.FindPost(postID)
+	if !ok {
+		return &Post{}
+	}
+	i.mu.Lock()
+	post.Score -= post.Votes[userID].Vote
+	post.ScoreCount--
+	if post.Votes[userID].Vote == 1 {
+		post.UpvoteCount--
+	}
+
+	post.UpvotePercentage = recalculateUpVotePercentage(post)
+	delete(post.Votes, userID)
+	i.DB.UpdateOne(i.Ctx, bson.M{"_id": postID}, bson.M{"$set": post})
+	i.mu.Unlock()
+	return post
+}
+
+func recalculateUpVotePercentage(post *Post) int {
+	percent := int((float32(post.UpvoteCount) / float32(post.ScoreCount)) * 100)
+	if percent < 0 {
+		percent = 0
+	}
+	return percent
 }
 
 func (i *ItemMemoryRepository) FindPost(id string) (*Post, bool) {
 	i.mu.RLock()
-	sourcePost, ok := i.Data[id]
+	var post *Post
+	err := i.DB.FindOne(i.Ctx, bson.M{"_id": id}).Decode(&post)
+	if err != nil {
+		log.Println(err)
+		return nil, false
+	}
 	i.mu.RUnlock()
-	return sourcePost, ok
+	return post, true
 }
 func createPost(front *PostToFront) *Post {
 	answer := Post{
@@ -109,7 +208,7 @@ func createPost(front *PostToFront) *Post {
 		Created:          front.Created,
 		ID:               front.ID,
 		Score:            front.Score,
-		UpVote:           front.UpVote,
+		ScoreCount:       front.UpVote,
 		Title:            front.Title,
 		Type:             front.Type,
 		Text:             front.Text,
@@ -142,7 +241,7 @@ func ConstructPostToFront(post *Post) *PostToFront {
 		Created:          post.Created,
 		ID:               post.ID,
 		Score:            post.Score,
-		UpVote:           post.UpVote,
+		UpVote:           post.ScoreCount,
 		Title:            post.Title,
 		Type:             post.Type,
 		Text:             post.Text,

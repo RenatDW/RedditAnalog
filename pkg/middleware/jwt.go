@@ -3,20 +3,21 @@ package middleware
 import (
 	"encoding/json"
 	"github.com/dgrijalva/jwt-go"
-	"gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/user"
+	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/user"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 var ExampleTokenSecret = []byte("супер секретный ключ")
 
-func GenerateJWTToken(w http.ResponseWriter, user user.User) ([]byte, error) {
+func GenerateJWTToken(w http.ResponseWriter, user user.User) ([]byte, string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user": map[string]interface{}{
 			"username": user.Login,
-			"id":       user.ID,
+			"id":       strconv.Itoa(user.ID),
 		},
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
@@ -24,7 +25,7 @@ func GenerateJWTToken(w http.ResponseWriter, user user.User) ([]byte, error) {
 	tokenString, err := token.SignedString(ExampleTokenSecret)
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
-		return nil, err
+		return nil, "", err
 	}
 
 	resp, err := json.Marshal(map[string]interface{}{
@@ -32,9 +33,9 @@ func GenerateJWTToken(w http.ResponseWriter, user user.User) ([]byte, error) {
 	})
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
-		return nil, err
+		return nil, "", err
 	}
-	return resp, nil
+	return resp, tokenString, nil
 }
 
 func JSONError(w io.Writer, status int, msg string) {

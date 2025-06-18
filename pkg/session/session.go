@@ -2,29 +2,37 @@ package session
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
-	"fmt"
+	"time"
 )
 
+type sqlTime []byte
+
+func (s sqlTime) Time() (time.Time, error) {
+	return time.Parse("15:04:05", string(s))
+}
+
 type Session struct {
-	ID     string
-	Login  string
-	UserID string
+	Token     string `gorm:"primary_key"`
+	Login     string
+	UserID    string
+	IsActive  bool
+	CreatedAt time.Time `gorm:"type:timestamp"`
+	ExpiresAt time.Time `gorm:"type:timestamp"`
 }
 
 func NewSession(userID string, userLogin string) *Session {
 	// лучше генерировать из заданного алфавита, но так писать меньше и для учебного примера ОК
-	randID := make([]byte, 16)
-	_, err := rand.Read(randID)
-	if err != nil {
-		return nil
-	}
-
+	//randID := make([]byte, 16)
+	//_, err := rand.Read(randID)
+	//if err != nil {
+	//	return nil
+	//}
 	return &Session{
-		ID:     fmt.Sprintf("%x", randID),
-		Login:  userLogin,
-		UserID: userID,
+		Login:     userLogin,
+		UserID:    userID,
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 }
 

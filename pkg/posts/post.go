@@ -3,8 +3,8 @@ package posts
 import "time"
 
 type Author struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
+	ID       string `bson:"id" json:"id"`
+	Username string `bson:"username" json:"username"`
 }
 type PostToFront struct {
 	Author           `json:"author"`
@@ -24,12 +24,13 @@ type PostToFront struct {
 }
 
 type Comment struct {
-	Author  Author    `json:"author"`
-	Body    string    `json:"body"`
-	Created time.Time `json:"created"`
-	ID      string    `json:"id"`
+	Author  Author    `bson:"author" json:"author"`
+	Body    string    `bson:"body" json:"body"`
+	Created time.Time `bson:"created" json:"created"`
+	ID      string    `bson:"id" json:"id"`
 }
+
 type Vote struct {
-	User string `json:"user"`
-	Vote int    `json:"vote"`
+	User string `bson:"user" json:"user"`
+	Vote int    `bson:"vote" json:"vote"`
 }

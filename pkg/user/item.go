@@ -1,11 +1,11 @@
 package user
 
-import "gitlab.vk-golang.ru/vk-golang/lectures/05_web_app/99_hw/redditclone/pkg/posts"
+import "gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/posts"
 
 type User struct {
-	ID        string
-	Login     string
-	password  string
+	ID        int    `gorm:"primary_key"`
+	Login     string ``
+	Password  string
 	userPosts map[string]bool        // save PostID
 	votes     map[string]*posts.Vote // [postID]voteValue
 }

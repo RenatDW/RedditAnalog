@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"cmd/redditclone/pkg/posts"
+	"cmd/redditclone/pkg/session"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/posts"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/session"
 	"net/http"
 )
 

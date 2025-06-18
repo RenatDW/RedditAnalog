@@ -1,10 +1,10 @@
 package user
 
 import (
+	"cmd/redditclone/pkg/posts"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/posts"
 	"golang.org/x/crypto/bcrypt"
 	"sync"
 )

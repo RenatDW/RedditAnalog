@@ -1,12 +1,12 @@
 package main
 
 import (
+	"cmd/redditclone/pkg/handlers"
+	"cmd/redditclone/pkg/middleware"
+	"cmd/redditclone/pkg/posts"
+	"cmd/redditclone/pkg/session"
+	"cmd/redditclone/pkg/user"
 	"github.com/gorilla/mux"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/handlers"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/middleware"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/posts"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/session"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/user"
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"

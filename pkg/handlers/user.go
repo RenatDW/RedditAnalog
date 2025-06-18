@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"cmd/redditclone/pkg/middleware"
+	"cmd/redditclone/pkg/session"
+	"cmd/redditclone/pkg/user"
 	"encoding/json"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/middleware"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/session"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/user"
 	"go.uber.org/zap"
 	"log"
 	"net/http"

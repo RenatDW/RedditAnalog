@@ -1,6 +1,6 @@
 package user
 
-import "gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/posts"
+import "cmd/redditclone/pkg/posts"
 
 type User struct {
 	ID        int    `gorm:"primary_key"`

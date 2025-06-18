@@ -1,9 +1,9 @@
 package middleware
 
 import (
+	"cmd/redditclone/pkg/user"
 	"encoding/json"
 	"github.com/dgrijalva/jwt-go"
-	"gitlab.vk-golang.ru/vk-golang/lectures/06_databases/99_hw/db/redditclone/pkg/user"
 	"io"
 	"log"
 	"net/http"
